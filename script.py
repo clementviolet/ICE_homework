@@ -14,3 +14,27 @@ import scipy as sp
 import matplotlib as plt
 import seaborn as sn
 from Bio import SeqIO # Allow me to read human-proteome.fasta file
+
+#%% [markdown]
+## Loading data
+# Now I will load all the I need for this project: the dictionnary and the proteome files.
+
+#%%
+dico_file = open("english-words.txt", "r") # Open the dico file
+
+dico = dico_file.readlines() # Convert it to list object
+
+print("Found %i words" % len(dico))
+
+sequences = [] # Create empty list for storing all sequences
+for sequence in SeqIO.parse("human-proteome.fasta", "fasta"):
+    sequences.append(str(sequence.seq)) # Convert _seq object to string
+
+print("Found %i sequences" % len(sequences))
+#%% [markdown]
+# I have got 3,000 words, excellent! And I have got more than 20,000 sequences, awesome!
+# 
+## Exploratory data analysis   
+# Now I will explore the two datasets.
+
+#%%
