@@ -11,10 +11,12 @@
 import pandas as pd
 import numpy as np
 import scipy as sp
-import matplotlib as plt
-import seaborn as sn
+import matplotlib.pyplot as plt
+import seaborn as sns
 from Bio import SeqIO # Allow me to read human-proteome.fasta file
+from collections import Counter # Count the number of each character
 
+sns.set_style('darkgrid')
 #%% [markdown]
 ## Loading data
 # Now I will load all the I need for this project: the dictionnary and the proteome files.
@@ -23,12 +25,22 @@ from Bio import SeqIO # Allow me to read human-proteome.fasta file
 dico_file = open("english-words.txt", "r") # Open the dico file
 
 dico = dico_file.readlines() # Convert it to list object
+dico = [s.replace("\n", "") for s in dico] # Remove \n from each string.
 
+length_word = [len(l) for l in dico]
+
+dico = pd.DataFrame(list(zip(dico, length_word)), columns=["word", "n_char"])
 print("Found %i words" % len(dico))
 
 sequences = [] # Create empty list for storing all sequences
+name = []
 for sequence in SeqIO.parse("human-proteome.fasta", "fasta"):
     sequences.append(str(sequence.seq)) # Convert _seq object to string
+    name.append(sequence.name)
+
+
+sequences = pd.DataFrame(list(zip(name, sequences)), columns=["name", "seq"])
+sequences["seq_length"] = sequences["seq"].str.len()
 
 print("Found %i sequences" % len(sequences))
 #%% [markdown]
@@ -38,3 +50,98 @@ print("Found %i sequences" % len(sequences))
 # Now I will explore the two datasets.
 
 #%%
+sequences.head()
+dico.head()
+
+#%% [markdown]
+# Ok so all the proteome code seem to be in upper case. Check that.
+
+#%%
+all(sequences["seq"].str.isupper())
+
+#%% [markdown]
+# All sequences character are in upper case.
+# So let's modify `dico["word"]` to upper case.
+
+#%%
+dico["word"] = dico["word"].str.upper()
+
+#%% [markdown]
+# Now I will look at some summary statisics 
+# from the dico and the sequences dataframes.
+
+#%%
+dico["n_char"].describe()
+sequences["seq_length"].describe()
+
+
+f1 = sns.violinplot(sequences["seq_length"])
+f1.set(title="Violin plot of the number of characters in the sequences",
+       xlabel="# Characters in a sequence")
+#plt.show(f1)
+
+f2 = sns.violinplot(dico["n_char"])
+f2.set(title="Violin plot of the number of characters in the words",
+       xlabel="# Characters in a word")
+#plt.show(f2)
+
+#%% [markdown]
+# So there is a very small sequence and a very large one. But the median is around 415 character length. 
+# Theses observations are confirmed by the violin plot, showing one BIG sequence and 
+# most of the sequences density around few hundreds characters.
+#
+# Moreover for the dico dataframe, 
+# I can see that there is some word with one character, maybe I choose remove it?
+# Most of the words are less thant 10 characters longs.
+#
+# Now, let's see the letter distribution in words and sequences.
+
+#%%
+letters_seq = (
+                pd.DataFrame.from_dict(Counter(''.join(sequences["seq"].tolist())), # Count occurences of each characters in the dico["word"]
+                 orient="index") # And convert the count to pd.DataFrame
+                .reset_index() # Because counter return a dictionary, letters are stored in the index, so get them out the index
+                .rename(columns={'index' : 'letter', 0 : 'count'}) # Cleaning a bit the name of the columns
+                .sort_values(by='letter') # Sort value by alphabetical order
+                .reset_index(drop=True) # Index is now mess up, so now I reset it
+                .assign(percap=lambda df: df["count"]/df["count"].sum()) # Percentage of this letters on all sequences
+                .assign(type="seq")
+                )
+                
+letters_word = (
+                pd.DataFrame.from_dict(Counter(''.join(dico["word"].tolist())),
+                orient='index')
+                .reset_index()
+                .rename(columns={'index' : 'letter', 0 : 'count'})
+                .sort_values(by='letter')
+                .reset_index(drop=True)
+                .assign(percap=lambda df: df["count"]/df["count"].sum())
+                .assign(type="word")
+                )
+
+letters = (pd.merge(letters_seq, letters_word, how='outer', 
+                   on=["letter", "count", "percap", "type"])
+           .sort_values(by="letter")
+           )
+
+
+f3 = sns.barplot(x='letter', y='percap', hue='type', data=letters)
+
+#%% [markdown]
+# So the most frequent letter in the words is "E". 
+# The most frequent character in the sequences is "L".
+# In the sequences, there is not sepecials characters like "-" or "'" 
+# as there are in the words.
+# But in the sequences there is no "B", "J", "O", "U" and "X" on the graph.
+# I will check if theses characters are missing in the sequences or rare.
+# If there are missing, I will remove them, 
+# beacause it will speed up my algorithm to find English words in proteome sequences.
+
+#%%
+letters[((letters['letter'] =="B") | (letters['letter'] == "J") | (letters['letter'] == "O") | (letters['letter'] == "U") | (letters['letter'] == "X")) & (letters['type'] == "seq")]
+
+#%% [markdown]
+# Ok, so only the U letter is in the sequences. 
+# So I will remove all words containing "B", "J", "O", and "X".
+#
+## Remove some letters
