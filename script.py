@@ -138,10 +138,69 @@ f3 = sns.barplot(x='letter', y='percap', hue='type', data=letters)
 # beacause it will speed up my algorithm to find English words in proteome sequences.
 
 #%%
-letters[((letters['letter'] =="B") | (letters['letter'] == "J") | (letters['letter'] == "O") | (letters['letter'] == "U") | (letters['letter'] == "X")) & (letters['type'] == "seq")]
+letters[ # Showing the number of letters in sequences that seems missing.
+        ((letters['letter'] =="B") | 
+        (letters['letter'] =="J") | 
+        (letters['letter'] =="O") | 
+        (letters['letter'] =="U") | 
+        (letters['letter'] =="X")) & 
+        (letters['type'] =="seq")
+        ]
 
 #%% [markdown]
 # Ok, so only the U letter is in the sequences. 
 # So I will remove all words containing "B", "J", "O", and "X".
 #
 ## Remove some letters
+
+#%%
+dico_short = dico[~(dico["word"].str.contains("B|J|O|X", regex=True))] # The '~' operator is equivalent to `!` in R
+
+dico_short.shape[0] # Count the number of rows
+
+#%% [markdown]
+# Whoa! I almost remove one half of the number of word due to missing letters in the sequences.
+#
+## Finding words in proteome genome
+# Now let's start serious buisness! I will define a function to find words in the proteome genome
+
+#%%
+def word_finder(strings, patterns):
+
+       """ Find a pattern in a string and return 
+       the number of occurence of the pattern. 
+       strings and pattenrs must be pd.series"""
+       if ~(isinstance(strings, pd.Series) == True): # I need a more proper way to throw an error....
+              return("Error: strings must be a pd.Series")
+
+       if ~(isinstance(patterns, pd.Series) == True):
+              return("Error: patterns must be a pd.Series")
+
+       nb_pattern = len(patterns)
+       string = []
+       pattern = []
+       count = []
+
+       for s in enumerate(strings):
+
+              string += [s[1]] * nb_pattern # for each string to look at I multiply by the number of patter to search for
+              
+              pattern_temp = [] # I don't know if it's important, but I prefer set up temp variable to not icrement them too much
+              count_temp  = []
+
+              for p in enumerate(patterns):
+
+                     pattern_temp += [p[1]] # Save the pattern to search for
+                     count_temp += [s[1].count(p[1])] # Count the number of occurence
+              
+              pattern += pattern_temp
+              count += count_temp
+
+       df = pd.DataFrame({
+                          "string" : string,
+                          "pattern" : pattern,
+                          "count" : count
+                          })       
+       return(df)
+
+
