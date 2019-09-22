@@ -17,6 +17,8 @@ from Bio import SeqIO # Allow me to read human-proteome.fasta file
 from collections import Counter # Count the number of each character
 
 sns.set_style('darkgrid')
+
+pd.set_option('display.max_rows', 1000)
 #%% [markdown]
 ## Loading data
 # Now I will load all the I need for this project: the dictionnary and the proteome files.
@@ -77,13 +79,13 @@ sequences["seq_length"].describe()
 
 f1 = sns.violinplot(sequences["seq_length"])
 f1.set(title="Violin plot of the number of characters in the sequences",
-       xlabel="# Characters in a sequence")
-#plt.show(f1)
+       xlabel="# Character in a sequence")
+plt.show()
 
 f2 = sns.violinplot(dico["n_char"])
 f2.set(title="Violin plot of the number of characters in the words",
-       xlabel="# Characters in a word")
-#plt.show(f2)
+       xlabel="# Character in a word")
+plt.show()
 
 #%% [markdown]
 # So there is a very small sequence and a very large one. But the median is around 415 character length. 
@@ -126,6 +128,11 @@ letters = (pd.merge(letters_seq, letters_word, how='outer',
 
 
 f3 = sns.barplot(x='letter', y='percap', hue='type', data=letters)
+f3.set(ylabel="Frequency",
+       xlabel="Letter",
+       title="Bar plot of the frequency of each character in the words and sequences")
+f3.legend(loc='upper left')
+plt.show()
 
 #%% [markdown]
 # So the most frequent letter in the words is "E". 
@@ -151,7 +158,7 @@ letters[ # Showing the number of letters in sequences that seems missing.
 # Ok, so only the U letter is in the sequences. 
 # So I will remove all words containing "B", "J", "O", and "X".
 #
-## Remove some letters
+## Finding words in human proteom
 
 #%%
 dico_short = dico[~(dico["word"].str.contains("B|J|O|X", regex=True))] # The '~' operator is equivalent to `!` in R
@@ -205,4 +212,79 @@ def word_finder(strings, patterns):
 
 search_word = word_finder(sequences["seq"], dico_short["word"])
 
+#%% [markdown]
+# Now, I will remove all pairs of sequence/word that that count == 0
+
 #%%
+search_word_filter = search_word.loc[search_word["count"] > 0]
+
+search_word_filter.shape[0]
+
+search_word_filter["count"].sum()
+#%% [markdown]
+# So 429,974 English words have been found at least once in the human proteom.
+# In total, there is 1,988,362 words found. How many differents does it represent?
+
+#%%
+word_stats = (
+              search_word_filter[["pattern", "count"]]
+              .groupby("pattern")["count"]
+              .agg(["sum", "mean", "std"])
+              .sort_values("sum", ascending=False)
+              .reset_index()
+              .rename(columns={"pattern" : "word",
+                                "sum" : "n"
+                              })
+              .assign(freq=lambda df: df["n"]/df["n"].sum(),
+                      n_character=lambda df: df["word"].str.len())
+              )
+
+freq_char_word = (
+                  word_stats[["n_character", "freq"]]
+                  .groupby("n_character")["freq"]
+                  .agg("sum")
+                  .reset_index()
+                 )
+
+f4 = sns.lineplot(x="n_character", y="freq", data=freq_char_word, estimator=None)
+f4.set(title="How frequent is a word of a given number of letters?",
+       xlabel="# Character in a word",
+       ylabel="Frequency")
+plt.show()
+
+#%% [markdown]
+# So in fact we just have 702 differents words found.
+# Most of them have few characters <= 3 and are very commons.
+# But what about sequences? Which sequence contain more words ?
+
+#%%
+seq_stats = (
+              search_word_filter[["string", "count"]]
+              .groupby("string")["count"]
+              .agg(["sum", "mean", "std"])
+              .sort_values("sum", ascending=False)
+              .reset_index()
+              .rename(columns={"string" : "sequence",
+                                "sum" : "n"
+                              })
+              .assign(freq=lambda df: df["n"]/df["n"].sum(),
+                      n_character=lambda df: df["sequence"].str.len())
+              )
+
+freq_char_seq = (
+                  seq_stats[["n_character", "n"]]
+                  .groupby("n_character")["n"]
+                  .agg("sum")
+                  .reset_index()
+                 )
+
+f5 = sns.scatterplot(x="n_character", y="n", data=freq_char_seq)
+f5.set_xscale('log')
+f5.set(title="How many words are contain in a sequence in function of its length?",
+       xlabel="log(# Character in a word)",
+       ylabel="# Word in sequence")
+plt.show()
+
+#%% [markdown]
+# So sequences of few hundred long have more thant 3,000 word!
+# I think it could be related to the number of "A" in the sequence
