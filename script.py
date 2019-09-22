@@ -170,10 +170,10 @@ def word_finder(strings, patterns):
        """ Find a pattern in a string and return 
        the number of occurence of the pattern. 
        strings and pattenrs must be pd.series"""
-       if ~(isinstance(strings, pd.Series) == True): # I need a more proper way to throw an error....
+       if not isinstance(strings, pd.Series): # I need a more proper way to throw an error....
               return("Error: strings must be a pd.Series")
 
-       if ~(isinstance(patterns, pd.Series) == True):
+       if not isinstance(patterns, pd.Series):
               return("Error: patterns must be a pd.Series")
 
        nb_pattern = len(patterns)
@@ -203,4 +203,6 @@ def word_finder(strings, patterns):
                           })       
        return(df)
 
+search_word = word_finder(sequences["seq"], dico_short["word"])
 
+#%%
