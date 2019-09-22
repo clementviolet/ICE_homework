@@ -7,6 +7,7 @@
 # For this I have an English dictionnary with 3,000 words and a *human-proteom.fasta* file containing the human proteome.
 #
 # First, let's load some modules!
+
 #%%
 import pandas as pd
 import numpy as np
@@ -19,6 +20,7 @@ from collections import Counter # Count the number of each character
 sns.set_style('darkgrid')
 
 pd.set_option('display.max_rows', 1000)
+
 #%% [markdown]
 ## Loading data
 # Now I will load all the I need for this project: the dictionnary and the proteome files.
@@ -45,6 +47,7 @@ sequences = pd.DataFrame(list(zip(name, sequences)), columns=["name", "seq"])
 sequences["seq_length"] = sequences["seq"].str.len()
 
 print("Found %i sequences" % len(sequences))
+
 #%% [markdown]
 # I have got 3,000 words, excellent! And I have got more than 20,000 sequences, awesome!
 # 
